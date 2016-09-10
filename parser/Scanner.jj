@@ -1,0 +1,604 @@
+options{
+  LOOKAHEAD = 3;
+  ERROR_REPORTING = true;
+  DEBUG_PARSER = true;
+  STATIC=false;
+}
+
+PARSER_BEGIN(MiniJavaScanner)
+  package parser;
+  import syntax.*;
+  import java.util.List;
+  import java.util.ArrayList;
+  public class MiniJavaScanner {
+  }
+PARSER_END(MiniJavaScanner)
+
+TOKEN :
+{
+  < LPAR: "(" >
+  | < RPAR: ")" >
+  | < LBRAC: "{" >
+  | < RBRAC: "}" >
+  | < LBRACK: "[" >
+  | < RBRACK: "]" >
+  | < SEMICOLON: ";" >
+  | < COMMA: "," >
+  | < DOT: "." >
+  | < ASSIGN: "=" >
+  | < BOOLEAN: "boolean">
+  | < INTEGER : "int">
+  | < CLASS: "class">
+  | < THIS: "this">
+  | < NOT: "!">
+  | < TRUE: "true">
+  | < FALSE: "false">
+  | < EXTENDS: "extends">
+  | < PUBLIC: "public">
+  | < STATIC: "static">
+  | < VOID: "void">
+  | < RETURN: "return">
+  | < MAIN: "main">
+  | < STRING: "String">
+  | < IF: "if">
+  | < ELSE: "else">
+  | < WHILE: "while">
+  | < PRINT: "System.out.println">
+  | < NEW: "new">
+  | < LENGTH: "length">
+  | < AND: "&&">
+  | < LESSTHAN: "<">
+  | < PLUS: "+">
+  | < MINUS: "-">
+  | < TIMES: "*">
+  //| < OP: ("&&" | "<" | "+" | "-" | "*")>
+  | < IDENTIFIER: ["_","a"-"z","A"-"Z"] (["_","a"-"z","A"-"Z"]|["0"-"9"] )* >
+  | < INTEGER_LITERAL: ["0"-"9"] (["0"-"9"])*>
+  | < INVALID: ~[" ", "\t", "\n", "\b", "\f", "\r"] >
+}
+
+SKIP :
+  {
+    " "
+    | "\t"
+    | "\n"
+    | "\r"
+    |<SINGLE_LINE_COMMENT: "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n")>
+    |<FORMAL_COMMENT: "/**" (~["*"])* "*" ("*" | (~["*","/"] (~["*"])* "*"))* "/">
+    |<MULTI_LINE_COMMENT: "/*" (~["*"])* "*" ("*" | (~["*","/"] (~["*"])* "*"))* "/">
+  }
+
+JAVACODE
+  void error(ParseException pe) {
+    Main.er.PrintFormatedError(pe);
+  }
+
+Program Target():
+//Variable names shall be specified in this special curly braces spot;
+  {
+    List <ClassDecl> cl = new ArrayList<ClassDecl>();
+    MainClass mc = MainClassCC();
+    ClassDecl cd;
+  }
+  //Try catch code, should also come inside curly braces
+  {
+    try {
+      (
+        (cd = spClassDeclaration()
+          {
+            cl.add(cd);
+          }) | (
+          cd = extClassDeclaration()
+            {
+              cl.add(cd);
+            }
+          )
+      )* <EOF>
+  //At the end, the return statement needs its own curly braces enviroment
+      {
+        return new Program(mc,cl);
+      }
+
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+      } while (t.kind != EOF);
+  }
+}
+
+MainClass MainClassCC():
+  //Main class variable declarations
+  {
+    Identifier idFirst;
+    Identifier idSecond;
+    Statement stMain;
+    MainClass mc;
+  }
+
+  {
+    try {
+
+      <CLASS> idFirst = IdentifierCC() <LBRAC> <PUBLIC>
+      <STATIC> <VOID> <MAIN> <LPAR> <STRING>
+      <LBRACK> <RBRACK> idSecond = IdentifierCC()  <RPAR>
+      <LBRAC> stMain = Statement() <RBRAC> <RBRAC>
+
+      {
+        return new MainClass(idFirst,idSecond,stMain);
+      }
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == RBRAC || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != RBRAC);
+  //Because I have two RBRACs, I skip twice for MainClass.
+
+        t = getNextToken();
+    }
+  }
+
+ExtendingClassDecl extClassDeclaration():
+{
+  Identifier idExtcd1;
+  Identifier idExtcd2;
+  MethodDecl metdDcl;
+  VarDecl varDcl;
+  List<VarDecl> listVardDec = new ArrayList<VarDecl>();
+  List<MethodDecl> listMDec = new ArrayList<MethodDecl>();
+
+}
+  {
+    try {
+      <CLASS> idExtcd1 = IdentifierCC() <EXTENDS> idExtcd2 = IdentifierCC()
+      <LBRAC> (varDcl = VarDeclaration() {listVardDec.add(varDcl);})*
+      (metdDcl = MethodDeclaration() {listMDec.add(metdDcl);})*
+      <RBRAC>
+      {
+        return new ExtendingClassDecl(idExtcd1, idExtcd2,listVardDec,listMDec);
+      }
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == RBRAC || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != RBRAC || t.kind != EOF);
+    }
+
+  }
+
+  SimpleClassDecl spClassDeclaration():
+  {
+    Identifier idClassScd;
+    MethodDecl metdDcl;
+    VarDecl varDcl;
+    List<VarDecl> listVardDec = new ArrayList<VarDecl>();
+    List<MethodDecl> listMDec = new ArrayList<MethodDecl>();
+  }
+    {
+      try {
+        <CLASS> idClassScd = IdentifierCC()
+        <LBRAC> (varDcl = VarDeclaration() {listVardDec.add(varDcl);})*
+        (metdDcl = MethodDeclaration() {listMDec.add(metdDcl);})*
+        <RBRAC>
+        {
+          return new SimpleClassDecl(idClassScd,listVardDec,listMDec);
+        }
+      } catch (ParseException pe) {
+        error(pe);
+        Token t;
+        do {
+          t = getNextToken();
+          if (t.kind == RBRAC || t.kind == EOF){
+            break;
+          }
+        } while (t.kind != RBRAC || t.kind != EOF);
+      }
+
+    }
+
+VarDecl VarDeclaration():
+{
+  Type tp;
+  Identifier idVar;
+}
+  {
+    try {
+      tp = Type() idVar = IdentifierCC() <SEMICOLON>
+      {
+        return new VarDecl(tp,idVar);
+      }
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == SEMICOLON || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != SEMICOLON);
+    }
+  }
+
+MethodDecl MethodDeclaration():
+{
+  Type tpMD;
+  Identifier idMD;
+  Formal fm;
+  List <Formal> fl = new ArrayList<Formal>();
+  VarDecl vdcl;
+  List <VarDecl> vl = new ArrayList<VarDecl>();
+  Statement stm;
+  List <Statement> sl = new ArrayList<Statement>();
+  Expression expMtd;
+}
+  {
+    try {
+      <PUBLIC> tpMD = Type() idMD = IdentifierCC() <LPAR>
+    [
+      fm = FormalCC()
+        {
+          fl.add(fm);
+        }
+      (
+        <COMMA>
+        fm = FormalCC()
+        {
+          fl.add(fm);
+        }
+      )*
+    ]
+
+      <RPAR>
+      <LBRAC>
+      (
+        vdcl = VarDeclaration()
+        {
+          vl.add(vdcl);
+        }
+      )*
+      (
+        stm = Statement()
+        {
+          sl.add(stm);
+        })*
+        <RETURN>
+      expMtd = Expression()
+      <SEMICOLON>
+      <RBRAC>
+      {
+        return new MethodDecl(tpMD,idMD,fl,vl,sl,expMtd);
+      }
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == RBRAC || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != RBRAC);
+    }
+  }
+
+Type Type():
+{
+IntegerType it;
+IdentifierType idt;
+}
+  {
+    try {
+      (<INTEGER> <LBRACK> <RBRACK>) {return Type.THE_INT_ARRAY_TYPE;}
+      | <INTEGER> {return Type.THE_INTEGER_TYPE;}
+      | <BOOLEAN> {return Type.THE_BOOLEAN_TYPE;}
+      | idt = idfType() {return idt;}
+      // |<BOOLEAN>
+      // | idt = idfType() {return idt;}
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == RBRAC || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != RBRAC);
+    }
+  }
+
+IdentifierType idfType():
+{
+  Token tit;
+}{
+  tit = <IDENTIFIER>
+  { return new IdentifierType(tit.beginLine,tit.beginColumn,tit.toString());}
+}
+
+
+Statement Statement():
+{
+  If stmIf;
+  Block stmBl;
+  While stmWh;
+  Print stmPrt;
+  Assign stmAss;
+  ArrayAssign stmArrAss;
+}
+  {
+    try {
+      (stmBl = bloclList()) {return stmBl;}
+      | (stmIf = ifCC()) { return stmIf;}
+      | (stmWh = whileCC()) {return stmWh;}
+      | (stmPrt = printCC()) {return stmPrt;}
+      | (stmAss = assignCC()) {return stmAss;}
+      | (stmArrAss = arrayAssgign()) {return stmArrAss;}
+
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == SEMICOLON || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != SEMICOLON);
+    }
+  }
+
+Block bloclList():
+{
+  List<Statement> lstm = new ArrayList<Statement>();
+  Statement stm;
+} {
+    <LBRAC> ( stm = Statement()
+      {
+        lstm.add(stm);
+      }
+    )* <RBRAC>
+    { return new Block(lstm);}
+    //A block is a list of statements
+
+}
+
+If ifCC():
+{
+  Expression expIf;
+  Statement s1;
+  Statement s2;
+} {
+  <IF>
+    <LPAR> expIf = Expression() <RPAR>
+    s1 = Statement()
+  <ELSE> s2 = Statement()
+  { return new If(expIf, s1, s2); }
+}
+
+While whileCC():
+{
+  Expression expWhile;
+  Statement stmWhile;
+}
+  {
+    <WHILE> <LPAR> expWhile = Expression() <RPAR> stmWhile = Statement()
+    {
+      return new While(expWhile, stmWhile);
+    }
+  }
+
+Print printCC():
+{
+  Expression expPrint;
+}
+  {
+    <PRINT> <LPAR> expPrint = Expression() <RPAR> <SEMICOLON>
+    {
+      return new Print(expPrint);
+    }
+  }
+
+Assign assignCC():
+{
+  Identifier idAs;
+  Expression expAs;
+}
+{
+  idAs = IdentifierCC() <ASSIGN> expAs = Expression() <SEMICOLON>
+  {
+    return new Assign(idAs,expAs);
+  }
+}
+
+ArrayAssign arrayAssgign():
+{
+  Identifier idArAss;
+  Expression expArrAss1;
+  Expression expArrAss2;
+}
+
+{
+  idArAss = IdentifierCC()
+  <LBRACK> expArrAss1 = Expression()
+  <RBRACK>
+  <ASSIGN> expArrAss2 = Expression()
+  <SEMICOLON>
+
+  {
+    return new ArrayAssign(idArAss, expArrAss1, expArrAss2);
+  }
+}
+
+Expression Expression():
+{
+  IntegerLiteral intLit;
+  True trueExp;
+  False falseExp;
+  Identifier idExp;
+  This thisExp;
+  NewArray nArr;
+  Expression pExp;
+  Expression secExp;
+}
+  {
+    try {
+      ( (pExp = intLiter()  ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = trueCC()  ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = falseCC() ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = idExpCC() ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = thisCC()  ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = nArray() ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = nObject()  ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (pExp = notCC()  ( secExp = expressionPrime(pExp){return secExp;})?){return pExp;}
+        | (<LPAR> pExp = Expression()<RPAR> ( secExp = expressionPrime(pExp){return secExp;})?)){return pExp;}
+    } catch (ParseException pe) {
+      error(pe);
+      Token t;
+      do {
+        t = getNextToken();
+        if (t.kind == RPAR || t.kind == INTEGER_LITERAL || t.kind == EOF){
+          break;
+        }
+      } while (t.kind != RPAR || t.kind != INTEGER_LITERAL);
+    }
+  }
+
+  Expression expressionPrime(Expression parExp):
+  {
+    Expression exPrime;
+    Expression expPrimefList;
+    Expression expPrimefList1;
+    Identifier idExpPr;
+    List<Expression> expPLs = new ArrayList<Expression>();
+    Token t;
+  }
+  {
+    (<AND> exPrime = Expression() {return new And(parExp,exPrime);})
+    | (<LESSTHAN> exPrime = Expression() {return new LessThan(parExp,exPrime);})
+    | (<TIMES> exPrime = Expression() {return new Times(parExp,exPrime);})
+    | (<PLUS> exPrime = Expression() {return new Plus(parExp,exPrime);})
+    | (<MINUS> exPrime = Expression() {return new Minus(parExp,exPrime);})
+    | (<LBRACK> exPrime = Expression() <RBRACK> {return new ArrayLookup(parExp,exPrime);})
+    | (<DOT> exPrime = dotLenght() {return new ArrayLength(parExp);})
+    | (<DOT> idExpPr = IdentifierCC() <LPAR> [expPrimefList1 = Expression()
+      {expPLs.add(expPrimefList1);} (<COMMA> expPrimefList = Expression()
+      {expPLs.add(expPrimefList);})*] <RPAR> {return new Call(parExp,idExpPr,expPLs);})
+  }
+
+IdentifierExp dotLenght():
+{
+    Token t;
+}
+{
+    t = <LENGTH>
+    {return new IdentifierExp(t.beginLine,t.beginColumn,t.toString());}
+}
+NewObject nObject():
+{
+  Identifier expNA;
+}
+{
+  <NEW> expNA = IdentifierCC() <LPAR> <RPAR>
+  {return new NewObject(expNA);}
+}
+
+NewArray nArray():
+{
+  Expression expNA;
+}
+{
+  <NEW> <INTEGER> <LBRACK> expNA = Expression() <RBRACK>
+  {return new NewArray(expNA);}
+}
+
+This thisCC():
+{
+}
+{
+  <THIS>
+  {return new This();}
+}
+
+Not notCC():
+{
+  Expression notExp;
+  Token t;
+}
+  {
+   t = <NOT> notExp = Expression()
+    {
+      return new Not(t.beginLine,t.beginColumn,notExp);
+    }
+  }
+True trueCC():
+{
+Token t;
+}
+{
+  t = <TRUE>
+  { return new True(t.beginLine,t.beginColumn);}
+}
+
+False falseCC():
+{
+Token t;
+}
+{
+  t = <FALSE>
+  {
+    return new False(t.beginLine,t.beginColumn);
+  }
+
+}
+
+IdentifierExp idExpCC():
+{
+  Token t;
+ }
+{
+  t = <IDENTIFIER>
+  {return new IdentifierExp(t.beginLine,t.beginColumn,t.toString());}
+}
+
+  Identifier IdentifierCC():
+    {
+      Token t;
+    }
+  {
+    t = <IDENTIFIER>
+    {
+      //return a new Identifier contructed with the string
+      //returned from the Token.
+      //System.out.println("Printing Identifier "+t.toString());
+      return new Identifier(t.beginLine,t.beginColumn,t.toString());
+    }
+  }
+
+  Formal FormalCC():
+  {
+    Type tpFormal;
+    Identifier idFormal;
+  }
+  {
+      tpFormal = Type()
+      idFormal = IdentifierCC()
+    {
+      return new Formal(tpFormal, idFormal);
+    }
+  }
+
+IntegerLiteral intLiter():
+{
+  Token t;
+} {
+  t = <INTEGER_LITERAL>
+  {
+    return new IntegerLiteral(t.beginLine,t.beginColumn,Integer.parseInt(t.image));
+  }
+}

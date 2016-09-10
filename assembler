@@ -1,0 +1,7 @@
+#!/bin/csh
+#compile runtime.c
+sparc-linux-gcc -g -c runtime.c
+#run the assembler
+sparc-linux-as -Asparc -g macros.s $1.s -o $1.o
+#run the linker
+sparc-linux-ld -e start -dynamic-linker=/lib/ld-uClibc.so.0 -lc $1.o runtime.o --entry main -o $1     
