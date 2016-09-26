@@ -1,8 +1,8 @@
 #Compiler Construction
 
-This project contains all my work in the compiler course available in [[http://cs.fit.edu/~ryan/cse4251/]]. The compiler is able to compile real Java code written in a subset of the Java language. 
+This project contains all my work in the compiler course available in http://cs.fit.edu/~ryan/cse4251/. The compiler is able to compile real Java code written in a subset of the Java language. 
 
-Everything I did follows what is described in the Compiler Construction book by Appel [[https://www.amazon.com/Modern-Compiler-Implementation-Andrew-Appel/dp/052182060X/]] with a few changes made by Dr. Stansifer [[http://cs.fit.edu/~ryan]]
+Everything I did follows what is described in the Compiler Construction book by Appel https://www.amazon.com/Modern-Compiler-Implementation-Andrew-Appel/dp/052182060X/ with a few changes made by Dr. Stansifer http://cs.fit.edu/~ryan
 
 I have support for arrays. Handling local and global variables.
 
