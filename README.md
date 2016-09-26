@@ -10,10 +10,10 @@ From Appel I can only run the program Factorial.java, and and altered version of
 which goes included here. The only alterations I did, is the following:
 
 I cannot do `array1[i] = array2[k]`. So what I did is:
-`
-aux = array2[k]
-array1[i] = aux;`
-
+```
+aux = array2[k];
+array1[i] = aux;
+```
 The Bubble contains all features I tried to implement. Local and Global variables access,
 as well as handling arrays, and printing together with while and if statements and it
 represents the best I can do so far.
