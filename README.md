@@ -1,4 +1,4 @@
-#Compiler Construction
+## Compiler Construction
 
 This project contains all my work in the compiler course available in http://cs.fit.edu/~ryan/cse4251/. The compiler is able to compile real Java code written in a subset of the Java language. 
 
